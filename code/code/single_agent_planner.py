@@ -129,24 +129,62 @@ def compare_nodes(n1, n2):
 # ------------------------------------------------------------------------------------------------------
 
 class Genome:
-    def __init__(self, len):
+    # TODO: changed here, need test
+    def __init__(self, len, start, constraint_table):
         self.bits = []
         self.fitness = 0
         self.stop = 0
+        timestep = 0
+        current_loc = start
         for g in range((int)(len / 2)):
-            self.bits.append(random.randint(0, 1))
-            self.bits.append(random.randint(0, 1))
+            timestep += 1
+            x = random.randint(0, 1)
+            y = random.randint(0, 1)
+            next_loc = get_GA_location(current_loc, [x, y])
+            while is_constrained(current_loc, next_loc, timestep, constraint_table):
+                x = random.randint(0, 1)
+                y = random.randint(0, 1)
+                next_loc = get_GA_location(current_loc, [x, y])
+            self.bits.append(x)
+            self.bits.append(y)
+            current_loc = next_loc
 
 
-def build_genList(num):
+# TODO: need test
+def get_GA_location(current_loc, move):
+    position = current_loc
+    if move[0] == 0 and move[1] == 0:
+        position[1] += 1
+    elif move[0] == 0 and move[1] == 1:
+        position[0] -= 1
+    elif move[0] == 1 and move[1] == 0:
+        position[1] -= 1
+    else:
+        position[0] += 1
+    return position
+
+
+# TODO: need test
+def get_GA_loc_at_time(bits, start, time):
+    cur_time = 0
+    cur_loc = start
+    s = 0
+    while cur_time < time:
+        cur_time += 1
+        move = [bits[s], bits[s + 1]]
+        cur_loc = get_GA_location(cur_loc, move)
+        s += 2
+    return cur_loc
+
+
+def build_genList(num, start, constraint_table):
     genList = []
     for i in range(2 * num):
-        gen = Genome(num)
+        gen = Genome(num, start, constraint_table)
         genList.append(gen)
     return genList
 
 
-# TODO: changed here, need tests
 def detect(map, gen, start, end):
     position = []
     position.append(start[0])
@@ -161,13 +199,13 @@ def detect(map, gen, start, end):
             position[1] -= 1
         else:
             position[0] += 1
-        # TODO: need check
+
         # if ended with a obstacle
         if map[position[0]][position[1]]:
             gen.fitness = 1 / (abs(end[0] - position[0]) + abs(end[1] - position[1]) + 1)
             gen.stop = j
             break
-        # TODO: need check
+
         elif (position[0], position[1]) == end:
             gen.fitness = 1
             gen.stop = j
@@ -224,10 +262,30 @@ def mutate(gen, rate):
 
 
 # TODO: need test
+def fix_gene_with_constraint(bits, start, constraint_table):
+    timestep = 0
+    new_bits = []
+    current_loc = start
+    s = 0
+    for g in range((int)(len(bits) / 2)):
+        timestep += 1
+        x = bits[s]
+        y = bits[s + 1]
+        next_loc = get_GA_location(current_loc, [x, y])
+        while is_constrained(current_loc, next_loc, timestep, constraint_table):
+            x = random.randint(0, 1)
+            y = random.randint(0, 1)
+            next_loc = get_GA_location(current_loc, [x, y])
+        new_bits.append(x)
+        new_bits.append(y)
+        current_loc = next_loc
+        s += 2
+    return new_bits
+
+
 def generatePath(map, bits, start, end):
     path = []
     path.append(start)
-    # map.matrix[start[0], start[1]] = 's'
     s = 0
     cur = 0
 
@@ -267,10 +325,15 @@ def a_star(map, start, end, h_values, agent, constraints):
     # print(start_loc[1])
 
     # num of chromosomes in a gene
+    start = [start[0], start[1]]
+    end = [end[0], end[1]]
     gn = len(map) * len(map[0]) * 0.5
     gn = int(gn)
-    # print(map)
-    genList = build_genList(gn)
+    # build constraint table for current agent
+    constraint_table = build_constraint_table(constraints, agent)
+    print("constraint_table", constraint_table)
+
+    genList = build_genList(gn, start, constraint_table)
     flag = 0
     for g in genList:
         flag = detect(map, g, start, end)
@@ -289,15 +352,18 @@ def a_star(map, start, end, h_values, agent, constraints):
             dad = select(genList)
             mum = select(genList)
 
-            child1 = Genome(gn)
-            child2 = Genome(gn)
+            child1 = Genome(gn, start, constraint_table)
+            child2 = Genome(gn, start, constraint_table)
 
             child1.bits, child2.bits = crossover(dad, mum, 0.5)
             detect(map, child1, start, end)
             detect(map, child2, start, end)
 
             mutate(child1, 0.3)
+            child1.bits = fix_gene_with_constraint(child1.bits, start, constraint_table)
+
             mutate(child2, 0.3)
+            child2.bits = fix_gene_with_constraint(child2.bits, start, constraint_table)
 
             flag = detect(map, child1, start, end)
             if flag == 1:
