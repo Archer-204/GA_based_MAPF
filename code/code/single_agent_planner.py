@@ -166,14 +166,17 @@ def detect(map, gen, start, end):
         if map[position[0]][position[1]]:
             gen.fitness = 1 / (abs(end[0] - position[0]) + abs(end[1] - position[1]) + 1)
             gen.stop = j
-            print("meet obstacle")
             break
         # TODO: need check
         elif (position[0], position[1]) == end:
             gen.fitness = 1
             gen.stop = j
-            print("reach the goal")
+            print("reach the goal: stop is ")
+            print(gen.stop)
             return 1
+        else:
+            print("safe to go: ")
+            print((position[0], position[1]))
     # if gen.stop == 0:
     #     gen.fitness = 1 / (abs(end[0] - position[0]) + abs(end[1] - position[1]) + 1)
     #     gen.stop = int(len(gen.bits) / 2)
@@ -227,8 +230,8 @@ def generatePath(map, bits, start, end):
     # map.matrix[start[0], start[1]] = 's'
     s = 0
     cur = 0
-    length = len(bits)
-    while s < length:
+
+    while (path[cur][0], path[cur][1]) != end:
         if [bits[s], bits[s + 1]] == [0, 0]:
             move = (path[cur][0], path[cur][1] + 1)
             path.append(move)
