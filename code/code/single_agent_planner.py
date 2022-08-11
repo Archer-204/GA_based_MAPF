@@ -189,6 +189,8 @@ def detect(map, gen, start, end):
     position = []
     position.append(start[0])
     position.append(start[1])
+    print(start)
+    print(map)
     for j in range(int(len(gen.bits) / 2)):
         g = [gen.bits[j * 2], gen.bits[j * 2 + 1]]
         if g[0] == 0 and g[1] == 0:
@@ -205,7 +207,6 @@ def detect(map, gen, start, end):
             gen.fitness = 1 / (abs(end[0] - position[0]) + abs(end[1] - position[1]) + 1)
             gen.stop = j
             break
-
         elif (position[0], position[1]) == end:
             gen.fitness = 1
             gen.stop = j
@@ -323,7 +324,8 @@ def a_star(map, start, end, h_values, agent, constraints):
     # print("Start Location:")
     # print(start_loc[0])
     # print(start_loc[1])
-
+    print("1")
+    print(start)
     # num of chromosomes in a gene
     start = [start[0], start[1]]
     end = [end[0], end[1]]
@@ -354,7 +356,8 @@ def a_star(map, start, end, h_values, agent, constraints):
 
             child1 = Genome(gn, start, constraint_table)
             child2 = Genome(gn, start, constraint_table)
-
+            print("2")
+            print(start)
             child1.bits, child2.bits = crossover(dad, mum, 0.5)
             detect(map, child1, start, end)
             detect(map, child2, start, end)
@@ -364,14 +367,18 @@ def a_star(map, start, end, h_values, agent, constraints):
 
             mutate(child2, 0.3)
             child2.bits = fix_gene_with_constraint(child2.bits, start, constraint_table)
-
+            print("3")
+            print(start)
             flag = detect(map, child1, start, end)
+            print("4")
+            print(start)
             if flag == 1:
                 print("Find It!")
                 print(f'number of iteration is {time}')
                 print(f'effective chromosome length {child1.stop + 1}')
                 return generatePath(map, child1.bits, start, end)
-
+            print("4")
+            print(start)
             flag = detect(map, child2, start, end)
             if flag == 1:
                 print("Find It!")
