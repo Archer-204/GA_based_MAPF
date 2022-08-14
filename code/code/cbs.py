@@ -236,6 +236,7 @@ class CBSSolver(object):
             constraints = standard_splitting(collision)
             # constraints = disjoint_splitting(collision)
             for constraint in constraints:
+
                 constraint_list = [constraint]
                 for i in p['constraints']:
                     constraint_list.append(i)

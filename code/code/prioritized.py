@@ -48,20 +48,23 @@ class PrioritizedPlanningSolver(object):
         #                'timestep': 10}
         # constraints.append(constraint3)
 
-        # constraint4 = {'agent': 1,
-        #                'loc': [(1, 2)],
-        #                'timestep': 2}
-        # constraints.append(constraint4)
-        #
-        # constraint5 = {'agent': 1,
-        #                'loc': [(1, 3)],
-        #                'timestep': 2}
-        # constraints.append(constraint5)
-        #
-        # constraint6 = {'agent': 1,
-        #                'loc': [(1, 4)],
-        #                'timestep': 2}
-        # constraints.append(constraint6)
+        constraint4 = {'agent': 1,
+                       'loc': [(1, 2)],
+                       'timestep': 2,
+                       'positive': False}
+        constraints.append(constraint4)
+        
+        constraint5 = {'agent': 1,
+                       'loc': [(1, 3)],
+                       'timestep': 2,
+                       'positive': False}
+        constraints.append(constraint5)
+        
+        constraint6 = {'agent': 1,
+                       'loc': [(1, 4)],
+                       'timestep': 2,
+                       'positive': False}
+        constraints.append(constraint6)
 
         for i in range(self.num_of_agents):  # Find path for each agent
             path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],

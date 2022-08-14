@@ -2,6 +2,7 @@ import heapq
 import numpy as np
 import random
 import math
+import copy
 
 
 def move(loc, dir):
@@ -60,8 +61,8 @@ def build_constraint_table(constraints, agent):
     constraint_table = dict()
     for cur_constraint in constraints:
         if cur_constraint['agent'] == agent:
-            # print('(time, loc):', [cur_constraint['timestep'], cur_constraint['loc']])
-            # print('constraint', cur_constraint)
+            print('(time, loc):', [cur_constraint['timestep'], cur_constraint['loc']])
+            print('constraint', cur_constraint)
             if cur_constraint['timestep'] in constraint_table:
                 constraint_table[cur_constraint['timestep']][tuple(cur_constraint['loc'])] = cur_constraint['positive']
             else:
@@ -99,9 +100,10 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
     #               by time step, see build_constraint_table.
     # print('time = ', next_time)
     # print(['inside is_constrained', curr_loc, next_loc, next_time])
+    # print(next_time)
     if next_time in constraint_table:
-        # print('loc = ', tuple([curr_loc, next_loc]))
-        # print('constraint_table[next_time] = ', constraint_table[next_time])
+        print('loc = ', tuple([curr_loc, next_loc]))
+        print('constraint_table[next_time] = ', constraint_table[next_time])
         if tuple([next_loc]) in constraint_table[next_time]:
             if not constraint_table[next_time][tuple([next_loc])]:
                 return True
@@ -141,7 +143,7 @@ class Genome:
             x = random.randint(0, 1)
             y = random.randint(0, 1)
             next_loc = get_GA_location(current_loc, [x, y])
-            while is_constrained(current_loc, next_loc, timestep, constraint_table):
+            while is_constrained(tuple(current_loc), tuple(next_loc), timestep, constraint_table):
                 x = random.randint(0, 1)
                 y = random.randint(0, 1)
                 next_loc = get_GA_location(current_loc, [x, y])
@@ -180,7 +182,8 @@ def get_GA_loc_at_time(bits, start, time):
 def build_genList(num, start, constraint_table):
     genList = []
     for i in range(2 * num):
-        gen = Genome(num, start, constraint_table)
+        temp = copy.deepcopy(start)
+        gen = Genome(num, temp, constraint_table)
         genList.append(gen)
     return genList
 
@@ -189,8 +192,10 @@ def detect(map, gen, start, end):
     position = []
     position.append(start[0])
     position.append(start[1])
-    print(start)
-    print(map)
+    # print(start)
+    # print(map)
+    # print(gen.bits)
+    # print("new detect")
     for j in range(int(len(gen.bits) / 2)):
         g = [gen.bits[j * 2], gen.bits[j * 2 + 1]]
         if g[0] == 0 and g[1] == 0:
@@ -201,13 +206,12 @@ def detect(map, gen, start, end):
             position[1] -= 1
         else:
             position[0] += 1
-
         # if ended with a obstacle
         if map[position[0]][position[1]]:
             gen.fitness = 1 / (abs(end[0] - position[0]) + abs(end[1] - position[1]) + 1)
             gen.stop = j
             break
-        elif (position[0], position[1]) == end:
+        elif position[0] == end[0] and position[1] == end[1]:
             gen.fitness = 1
             gen.stop = j
             print("reach the goal: stop is ")
@@ -216,6 +220,7 @@ def detect(map, gen, start, end):
         else:
             print("safe to go: ")
             print((position[0], position[1]))
+    # print("end detect")
     # if gen.stop == 0:
     #     gen.fitness = 1 / (abs(end[0] - position[0]) + abs(end[1] - position[1]) + 1)
     #     gen.stop = int(len(gen.bits) / 2)
@@ -273,7 +278,7 @@ def fix_gene_with_constraint(bits, start, constraint_table):
         x = bits[s]
         y = bits[s + 1]
         next_loc = get_GA_location(current_loc, [x, y])
-        while is_constrained(current_loc, next_loc, timestep, constraint_table):
+        while is_constrained(tuple(current_loc), tuple(next_loc), timestep, constraint_table):
             x = random.randint(0, 1)
             y = random.randint(0, 1)
             next_loc = get_GA_location(current_loc, [x, y])
@@ -284,27 +289,27 @@ def fix_gene_with_constraint(bits, start, constraint_table):
     return new_bits
 
 
-def generatePath(map, bits, start, end):
+def generatePath(map, g, start, end):
     path = []
-    path.append(start)
+    path.append((start[0], start[1]))
     s = 0
     cur = 0
-
-    while (path[cur][0], path[cur][1]) != end:
-        if [bits[s], bits[s + 1]] == [0, 0]:
+    while [path[cur][0], path[cur][1]] != end and s <= len(g.bits) - 2:
+        if [g.bits[s], g.bits[s + 1]] == [0, 0]:
             move = (path[cur][0], path[cur][1] + 1)
             path.append(move)
-        elif [bits[s], bits[s + 1]] == [0, 1]:
+        elif [g.bits[s], g.bits[s + 1]] == [0, 1]:
             move = (path[cur][0] - 1, path[cur][1])
             path.append(move)
-        elif [bits[s], bits[s + 1]] == [1, 0]:
+        elif [g.bits[s], g.bits[s + 1]] == [1, 0]:
             move = (path[cur][0], path[cur][1] - 1)
             path.append(move)
-        elif [bits[s], bits[s + 1]] == [1, 1]:
+        elif [g.bits[s], g.bits[s + 1]] == [1, 1]:
             move = (path[cur][0] + 1, path[cur][1])
             path.append(move)
         s += 2
         cur += 1
+
     print("path")
     print(path)
     return path
@@ -324,67 +329,71 @@ def a_star(map, start, end, h_values, agent, constraints):
     # print("Start Location:")
     # print(start_loc[0])
     # print(start_loc[1])
-    print("1")
-    print(start)
+
     # num of chromosomes in a gene
+    # print("constraints table is")
     start = [start[0], start[1]]
     end = [end[0], end[1]]
     gn = len(map) * len(map[0]) * 0.5
     gn = int(gn)
     # build constraint table for current agent
     constraint_table = build_constraint_table(constraints, agent)
+    
     print("constraint_table", constraint_table)
-
-    genList = build_genList(gn, start, constraint_table)
+    temp = copy.deepcopy(start)
+    genList = build_genList(gn, temp, constraint_table)
     flag = 0
     for g in genList:
+
         flag = detect(map, g, start, end)
         if flag == 1:
-            print("Find It!")
-            print(g.stop)
-            print(g.bits)
-            return generatePath(map, g.bits, start, end)
+            # print("Find It!")
+            # print(g.stop)
+            # print(g.bits)
+            return generatePath(map, g, start, end)
 
     newlist = []
     time = 0
+
     while flag == 0:
         time += 1
         child_n = 0
         while child_n < gn * 2:
             dad = select(genList)
             mum = select(genList)
-
-            child1 = Genome(gn, start, constraint_table)
-            child2 = Genome(gn, start, constraint_table)
-            print("2")
-            print(start)
+            temp1 = copy.deepcopy(start)
+            child1 = Genome(gn, temp1, constraint_table)
+            temp2 = copy.deepcopy(start)
+            child2 = Genome(gn, temp2, constraint_table)
             child1.bits, child2.bits = crossover(dad, mum, 0.5)
-            detect(map, child1, start, end)
-            detect(map, child2, start, end)
+            temp3 = copy.deepcopy(start)
+            detect(map, child1, temp3, end)
+            temp4 = copy.deepcopy(start)
+            detect(map, child2, temp4, end)
 
             mutate(child1, 0.3)
-            child1.bits = fix_gene_with_constraint(child1.bits, start, constraint_table)
+            temp5 = copy.deepcopy(start)
+            child1.bits = fix_gene_with_constraint(child1.bits, temp5, constraint_table)
 
             mutate(child2, 0.3)
-            child2.bits = fix_gene_with_constraint(child2.bits, start, constraint_table)
-            print("3")
-            print(start)
-            flag = detect(map, child1, start, end)
-            print("4")
-            print(start)
+            temp6 = copy.deepcopy(start)
+            child2.bits = fix_gene_with_constraint(child2.bits, temp6, constraint_table)
+            temp7 = copy.deepcopy(start)
+            flag = detect(map, child1, temp7, end)
             if flag == 1:
                 print("Find It!")
                 print(f'number of iteration is {time}')
                 print(f'effective chromosome length {child1.stop + 1}')
-                return generatePath(map, child1.bits, start, end)
-            print("4")
-            print(start)
-            flag = detect(map, child2, start, end)
+                temp8 = copy.deepcopy(start)
+                return generatePath(map, child1, temp8, end)
+            temp9 = copy.deepcopy(start)
+            flag = detect(map, child2, temp9, end)
             if flag == 1:
                 print("Find It!")
                 print(f'number of iteration is {time}')
                 print(f'effective chromosome length {child2.stop + 1}')
-                return generatePath(map, child2.bits, start, end)
+                temp10 = copy.deepcopy(start)
+                return generatePath(map, child2, temp10, end)
 
             newlist.append(child1)
             newlist.append(child2)
@@ -400,17 +409,17 @@ def a_star(map, start, end, h_values, agent, constraints):
 #         agent       - the agent that is being re-planned
 #         constraints - constraints defining where robot should or cannot go at each timestep
 #     """
-#
+
 #     ##############################
 #     # Task 1.1: Extend the A* search to search in the space-time domain
 #     #           rather than space domain, only.
-#
+#     print("hello" + str(constraints))
 #     open_list = []
 #     closed_list = dict()
 #     earliest_goal_timestep = 0
 #     h_value = h_values[start_loc]
 #     constraint_table = build_constraint_table(constraints, agent)
-#     # print("constraint_table", constraint_table)
+#     print("constraint_table1111", constraint_table)
 #     root = {'loc': start_loc,
 #             'g_val': 0,
 #             'h_val': h_value,
@@ -433,13 +442,13 @@ def a_star(map, start, end, h_values, agent, constraints):
 #             return get_path(curr)
 #         elif curr['time_step'] >= len(my_map) * len(my_map[0]):
 #             break
-#
+
 #         for dir in range(5):
 #             if dir < 4:
 #                 child_loc = move(curr['loc'], dir)
 #             else:
 #                 child_loc = curr['loc']
-#
+
 #             if my_map[child_loc[0]][child_loc[1]]:
 #                 continue
 #             child = {'loc': child_loc,
@@ -447,7 +456,7 @@ def a_star(map, start, end, h_values, agent, constraints):
 #                      'h_val': h_values[child_loc],
 #                      'parent': curr,
 #                      'time_step': curr['time_step'] + 1}
-#
+
 #             if not is_constrained(curr['loc'], child['loc'], child['time_step'], constraint_table):
 #                 # print([agent, curr['loc'], child['loc'], child['time_step']])
 #                 if (child['loc'], child['time_step']) in closed_list:
@@ -460,5 +469,5 @@ def a_star(map, start, end, h_values, agent, constraints):
 #                     # print('closed list', closed_list)
 #                     closed_list[(child['loc'], child['time_step'])] = child
 #                     push_node(open_list, child)
-#
+
 #     return None  # Failed to find solutions
